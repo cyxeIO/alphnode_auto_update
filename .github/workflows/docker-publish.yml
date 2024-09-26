@@ -1,0 +1,36 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 * * *' # Runs daily at midnight to check for updates
+
+jobs:
+  update-docker-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Alephium Stack
+        uses: actions/checkout@v2
+        with:
+          repository: alephium/alephium-stack
+          path: alephium-stack
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t cyxeio/alphnode_test:latest -f ./alephium-stack/mainnet/Dockerfile .
+          docker push cyxeio/alphnode_test:latest
+
+      - name: Post Cleanup
+        run: docker image prune -f
