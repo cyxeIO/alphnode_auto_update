@@ -9,96 +9,34 @@ on:
   workflow_dispatch:  # Allows you to trigger the workflow manually
 
 jobs:
-  update-mainnet:
+  pull-tag-and-push-image:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Clone the Alephium Stack repository
-      - name: Checkout Alephium Stack
-        uses: actions/checkout@v2
+      # Step 1: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
         with:
-          repository: alephium/alephium-stack
-          path: alephium-stack
+          username: ${{ secrets.DOCKER_USERNAME }}  # Your Docker Hub username
+          password: ${{ secrets.DOCKER_PASSWORD }}  # Your Docker Hub password
 
-      # Step 2: Install Docker Compose
-      - name: Install Docker Compose
+      # Step 2: Pull the pre-built Docker image from Alephium
+      - name: Pull Alephium Docker Image
         run: |
-          sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
+          docker pull alephium/alephium:v3.6.3  # Pull the Alephium image
 
-      # Step 3: Modify the docker-compose.yml to build the image locally instead of using the pre-built image
-      - name: Modify Docker Compose to Build Image Locally
+      # Step 3: Tag the Docker image for your Docker Hub repo
+      - name: Tag Docker Image
         run: |
-          cd alephium-stack/mainnet
-          # Update docker-compose.yml to use the local Dockerfile instead of pulling the image
-          sed -i 's#image: cyxeio/alphnode_test:latest#build:\n      context: .\n      dockerfile: Dockerfile#g' docker-compose.yml
+          docker tag alephium/alephium:v3.6.3 cyxeio/alphnode_test:latest
+          docker tag alephium/alephium:v3.6.3 cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
 
-      # Step 4: Overwrite the Makefile with the new content
-      - name: Overwrite Makefile for Mainnet
+      # Step 4: Push the newly tagged image to your Docker Hub repository
+      - name: Push Docker Image to Docker Hub
         run: |
-          cd alephium-stack
-          cat << 'EOF' > Makefile
-          # Makefile for Alephium Mainnet
-
-          .ONESHELL:
-
-          all: help
-
-          # MAINNET TARGETS
-          start-mainnet: ## start the mainnet
-          	@echo 'Starting mainnet...'
-          	cd mainnet && \
-              if docker --help | grep -q 'compose'; then \
-                docker compose up -d --force-recreate --remove-orphans; \
-              else \
-                docker-compose up -d --force-recreate --remove-orphans; \
-              fi
-          	@echo 'Mainnet started.'
-
-          stop-mainnet: ## stop the mainnet
-          	@echo 'Stopping mainnet...'
-          	cd mainnet && \
-              if docker --help | grep -q 'compose'; then \
-                docker compose down; \
-              else \
-                docker-compose down; \
-              fi
-          	@echo 'Mainnet stopped.'
-
-          restart-mainnet: ## restart the mainnet
-          	@make stop-mainnet
-          	@make start-mainnet
-
-          help: ## print this help
-          	@grep '##' $(MAKEFILE_LIST) \
-          		| grep -Ev 'grep|###' \
-          		| sed -e 's/^\([^:]*\):[^#]*##\([^#]*\)$$/\1:\2/' \
-          		| awk -F ":" '{ printf "%-25s%s\n", "\033[1;32m" $$1 ":\033[m", $$2 }' \
-          		| grep -v 'sed'
-          EOF
-
-      # Step 5: Build the Docker image for mainnet
-      - name: Build Docker Image
-        run: |
-          cd alephium-stack/mainnet
-          docker-compose build --no-cache
-          docker tag cyxeio/alphnode_test:latest cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
-          docker push cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
           docker push cyxeio/alphnode_test:latest
+          docker push cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
 
-      # Step 6: Use the Makefile to start the mainnet (after the image has been built)
-      - name: Start Mainnet
-        run: |
-          cd alephium-stack
-          make start-mainnet
-
-      # Step 7: Stop the mainnet after building
-      - name: Stop Mainnet
-        run: |
-          cd alephium-stack
-          make stop-mainnet
-
-      # Step 8: Clean up unused Docker images
+      # Step 5: Clean up unused Docker images to save space
       - name: Cleanup Docker Images
         run: docker image prune -f
