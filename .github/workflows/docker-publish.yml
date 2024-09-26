@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout Alephium Stack from its repository
+      # Checkout the Alephium Stack repository
       - name: Checkout Alephium Stack
         uses: actions/checkout@v2
         with:
@@ -22,6 +22,13 @@ jobs:
       # Set up Docker Buildx (required for Docker Compose)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+
+      # Install Docker Compose using official method
+      - name: Install Docker Compose
+        run: |
+          curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
 
       # Log in to Docker Hub using credentials stored in secrets
       - name: Log in to Docker Hub
@@ -36,7 +43,7 @@ jobs:
           cd alephium-stack/mainnet
           # Replace the default Alephium image with your Docker Hub repo and tag
           sed -i 's#alephium/alephium:v3.6.3#cyxeio/alphnode_test:latest#g' docker-compose.yml
-          
+
       # Build and push the image using Docker Compose
       - name: Build and Push Docker Image
         run: |
