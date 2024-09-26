@@ -1,4 +1,4 @@
-name: Monitor and Update cyxeio/mainnet and cyxeio/alphnode_test
+name: Monitor and Update Alephium Mainnet
 
 on:
   push:
@@ -13,84 +13,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Fetch the latest version from Alephium GitHub (Mainnet)
-      - name: Get latest version from Alephium GitHub (Mainnet)
-        id: alephium_mainnet_version  # ID to reference in later steps
-        run: |
-          latest_commit=$(curl -s https://api.github.com/repos/alephium/alephium-stack/commits/mainnet | jq -r '.[0].commit.message')
-          version=$(echo "$latest_commit" | grep -oE 'Full node [0-9]+\.[0-9]+\.[0-9]+' | awk '{print $3}')
-          echo "Latest version in Alephium Mainnet: $version"
-          echo "::set-output name=alephium_mainnet_tag::$version"
-
-      # Step 2: Fetch the latest version from Alephium GitHub (Testnet)
-      - name: Get latest version from Alephium GitHub (Testnet)
-        id: alephium_testnet_version  # ID to reference in later steps
-        run: |
-          latest_commit=$(curl -s https://api.github.com/repos/alephium/alephium-stack/commits/testnet | jq -r '.[0].commit.message')
-          version=$(echo "$latest_commit" | grep -oE 'Full node [0-9]+\.[0-9]+\.[0-9]+' | awk '{print $3}')
-          echo "Latest version in Alephium Testnet: $version"
-          echo "::set-output name=alephium_testnet_tag::$version"
-
-      # Step 3: Log in to Docker Hub
+      # Step 1: Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}  # Your Docker Hub username
           password: ${{ secrets.DOCKER_PASSWORD }}  # Your Docker Hub password
 
-      # Step 4: Pull the Docker image from cyxeio/mainnet using the Alephium Mainnet version
-      - name: Pull Docker Image for cyxeio/mainnet
+      # Step 2: Pull the latest Alephium Docker Image
+      - name: Pull Latest Alephium Docker Image
         run: |
-          if [ -z "${{ steps.alephium_mainnet_version.outputs.alephium_mainnet_tag }}" ]; then
-            echo "No valid tag found for mainnet, exiting."
-            exit 1
-          else
-            docker pull cyxeio/mainnet:v${{ steps.alephium_mainnet_version.outputs.alephium_mainnet_tag }}
-          fi
+          LATEST_VERSION=$(curl -s https://hub.docker.com/v2/repositories/alephium/alephium/tags/?page_size=1 | jq -r '.results[0].name')
+          echo "Latest version: $LATEST_VERSION"
+          docker pull alephium/alephium:$LATEST_VERSION  # Pull the latest Alephium image
 
-      # Step 5: Pull the Docker image from cyxeio/alphnode_test using the Alephium Testnet version
-      - name: Pull Docker Image for cyxeio/alphnode_test
+      # Step 3: Tag the Docker image for your Docker Hub repo
+      - name: Tag Docker Image
         run: |
-          if [ -z "${{ steps.alephium_testnet_version.outputs.alephium_testnet_tag }}" ]; then
-            echo "No valid tag found for testnet, exiting."
-            exit 1
-          else
-            docker pull cyxeio/alphnode_test:v${{ steps.alephium_testnet_version.outputs.alephium_testnet_tag }}
-          fi
+          LATEST_VERSION=$(curl -s https://hub.docker.com/v2/repositories/alephium/alephium/tags/?page_size=1 | jq -r '.results[0].name')
+          docker tag alephium/alephium:$LATEST_VERSION cyxeio/mainnet:latest
+          docker tag alephium/alephium:$LATEST_VERSION cyxeio/mainnet:$LATEST_VERSION
+          docker tag alephium/alephium:$LATEST_VERSION cyxeio/mainnet:$(date +%Y%m%d%H%M)
 
-      # Step 6: Tag the Docker image for cyxeio/mainnet
-      - name: Tag Docker Image for cyxeio/mainnet
-        run: |
-          docker tag cyxeio/mainnet:v${{ steps.alephium_mainnet_version.outputs.alephium_mainnet_tag }} cyxeio/mainnet:latest
-          docker tag cyxeio/mainnet:v${{ steps.alephium_mainnet_version.outputs.alephium_mainnet_tag }} cyxeio/mainnet:v${{ steps.alephium_mainnet_version.outputs.alephium_mainnet_tag }}
-          docker tag cyxeio/mainnet:v${{ steps.alephium_mainnet_version.outputs.alephium_mainnet_tag }} cyxeio/mainnet:$(date +%Y%m%d%H%M)
-
-      # Step 7: Tag the Docker image for cyxeio/alphnode_test
-      - name: Tag Docker Image for cyxeio/alphnode_test
-        run: |
-          docker tag cyxeio/alphnode_test:v${{ steps.alephium_testnet_version.outputs.alephium_testnet_tag }} cyxeio/alphnode_test:latest
-          docker tag cyxeio/alphnode_test:v${{ steps.alephium_testnet_version.outputs.alephium_testnet_tag }} cyxeio/alphnode_test:v${{ steps.alephium_testnet_version.outputs.alephium_testnet_tag }}
-          docker tag cyxeio/alphnode_test:v${{ steps.alephium_testnet_version.outputs.alephium_testnet_tag }} cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
-
-      # Step 8: List Docker Images and Tags
+      # Step 4: Verify the tags created locally before pushing
       - name: List Docker Images and Tags
         run: |
           docker images  # List all images and tags
 
-      # Step 9: Push Docker Image to Docker Hub for cyxeio/mainnet
-      - name: Push Docker Image to Docker Hub (cyxeio/mainnet)
+      # Step 5: Push the newly tagged image to your Docker Hub repository
+      - name: Push Docker Image to Docker Hub
         run: |
+          LATEST_VERSION=$(curl -s https://hub.docker.com/v2/repositories/alephium/alephium/tags/?page_size=1 | jq -r '.results[0].name')
           docker push cyxeio/mainnet:latest
-          docker push cyxeio/mainnet:v${{ steps.alephium_mainnet_version.outputs.alephium_mainnet_tag }}
+          docker push cyxeio/mainnet:$LATEST_VERSION  # Push the latest version tag
           docker push cyxeio/mainnet:$(date +%Y%m%d%H%M)
 
-      # Step 10: Push Docker Image to Docker Hub for cyxeio/alphnode_test
-      - name: Push Docker Image to Docker Hub (cyxeio/alphnode_test)
-        run: |
-          docker push cyxeio/alphnode_test:latest
-          docker push cyxeio/alphnode_test:v${{ steps.alephium_testnet_version.outputs.alephium_testnet_tag }}
-          docker push cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
-
-      # Step 11: Clean up unused Docker images to save space
+      # Step 6: Clean up unused Docker images to save space
       - name: Cleanup Docker Images
         run: docker image prune -f
