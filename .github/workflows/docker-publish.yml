@@ -1,75 +1,52 @@
-name: Build and Push Docker Image Using Docker Compose
+name: Monitor and Update Alephium Image
 
 on:
+  # Run on a schedule (e.g., every day at midnight) to check for changes in the Alephium repository
+  schedule:
+    - cron: '0 0 * * *'  # Daily
+  # Run on push to your main repository (optional)
   push:
     branches:
       - main
-  schedule:
-    - cron: '0 0 * * *' # Runs daily at midnight to check for updates
 
 jobs:
   update-docker-image:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the Alephium Stack repository
+      # 1. Clone the Alephium Stack repository
       - name: Checkout Alephium Stack
         uses: actions/checkout@v2
         with:
           repository: alephium/alephium-stack
           path: alephium-stack
 
-      # Set up Docker Buildx (required for Docker Compose)
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      # Install Docker Compose using the official method
-      - name: Install Docker Compose
-        run: |
-          curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
-
-      # Create Dockerfile dynamically in alephium-stack/mainnet
-      - name: Create Dockerfile
+      # 2. Check if the Alephium Docker image version has changed
+      - name: Check for Image Update
+        id: check_image_update
         run: |
           cd alephium-stack/mainnet
-          cat <<EOF > Dockerfile
-          # Use the Alephium base image
-          FROM alephium/alephium:v3.6.3
-          
-          # Set working directory inside the container
-          WORKDIR /app
+          # Extract the current version from the docker-compose.yml
+          current_version=$(grep 'image: alephium/alephium:' docker-compose.yml | awk -F: '{print $3}')
+          # Check if the image version is already up-to-date in your repository
+          if [[ $current_version == $(cat ../../latest_alephium_version) ]]; then
+            echo "No new version of Alephium image."
+            exit 0
+          else
+            echo "New version detected: $current_version"
+            echo $current_version > ../../latest_alephium_version
+          fi
 
-          # Copy all files from current directory into the container (optional, if you have app code)
-          COPY . .
-
-          # Expose the necessary port(s)
-          EXPOSE 9973
-
-          # Command to run when the container starts (modify as necessary)
-          CMD ["./start.sh"]
-          EOF
-
-      # Modify the docker-compose.yml file to ensure it uses the build context
-      - name: Modify Docker Compose File to Use Build Context
+      # 3. Build and push a new Docker image if the version changed
+      - name: Build and Push New Docker Image
+        if: steps.check_image_update.outputs.new_version == 'true'
         run: |
           cd alephium-stack/mainnet
-          sed -i 's#image: alephium/alephium:v3.6.3#build:\n      context: .\n      dockerfile: Dockerfile#g' docker-compose.yml
-
-      # Build the Docker image with Docker Compose and tag it
-      - name: Build Docker Image
-        run: |
-          cd alephium-stack/mainnet
-          docker-compose build --no-cache || true  # Force build without cache, continue even if build fails
-
-      # Tag the image explicitly before pushing
-      - name: Tag and Push Docker Image
-        run: |
-          docker tag cyxeio/alphnode_test:latest cyxeio/alphnode_test:latest
+          docker-compose build --no-cache
+          docker tag cyxeio/alphnode_test:latest cyxeio/alphnode_test:$current_version
+          docker push cyxeio/alphnode_test:$current_version
           docker push cyxeio/alphnode_test:latest
 
-      # Clean up unused Docker images to free space
+      # Clean up unused Docker images
       - name: Cleanup Docker Images
         run: docker image prune -f
-
