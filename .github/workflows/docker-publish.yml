@@ -51,11 +51,11 @@ jobs:
           CMD ["./start.sh"]
           EOF
 
-      # Modify the docker-compose.yml file to ensure it uses your Docker Hub repo
-      - name: Modify Docker Compose File to Use Your Docker Hub Repo
+      # Modify the docker-compose.yml file to ensure it uses the build context
+      - name: Modify Docker Compose File to Use Build Context
         run: |
           cd alephium-stack/mainnet
-          sed -i 's#alephium/alephium:v3.6.3#cyxeio/alphnode_test:latest#g' docker-compose.yml
+          sed -i 's#image: alephium/alephium:v3.6.3#build:\n      context: .\n      dockerfile: Dockerfile#g' docker-compose.yml
 
       # Build and push the image using Docker Compose and output logs
       - name: Build and Push Docker Image
