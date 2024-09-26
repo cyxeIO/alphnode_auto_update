@@ -33,7 +33,7 @@ jobs:
           cd alephium-stack/mainnet
           if [ ! -f Dockerfile ]; then
             echo "Dockerfile not found, creating Dockerfile."
-            cat <<EOF > Dockerfile
+            cat << 'EOF' > Dockerfile
             # Use the Alephium base image
             FROM alephium/alephium:v3.6.3
 
