@@ -27,7 +27,14 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
 
-      # Step 3: Overwrite the Makefile with the new content
+      # Step 3: Modify the docker-compose.yml to build the image locally instead of using the pre-built image
+      - name: Modify Docker Compose to Build Image Locally
+        run: |
+          cd alephium-stack/mainnet
+          # Update docker-compose.yml to use the local Dockerfile instead of pulling the image
+          sed -i 's#image: cyxeio/alphnode_test:latest#build:\n      context: .\n      dockerfile: Dockerfile#g' docker-compose.yml
+
+      # Step 4: Overwrite the Makefile with the new content
       - name: Overwrite Makefile for Mainnet
         run: |
           cd alephium-stack
@@ -71,7 +78,7 @@ jobs:
           		| grep -v 'sed'
           EOF
 
-      # Step 4: Build the Docker image for mainnet (Build the image from Dockerfile)
+      # Step 5: Build the Docker image for mainnet
       - name: Build Docker Image
         run: |
           cd alephium-stack/mainnet
@@ -80,18 +87,18 @@ jobs:
           docker push cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
           docker push cyxeio/alphnode_test:latest
 
-      # Step 5: Use the Makefile to start the mainnet (after the image has been built)
+      # Step 6: Use the Makefile to start the mainnet (after the image has been built)
       - name: Start Mainnet
         run: |
           cd alephium-stack
           make start-mainnet
 
-      # Step 6: Stop the mainnet after building
+      # Step 7: Stop the mainnet after building
       - name: Stop Mainnet
         run: |
           cd alephium-stack
           make stop-mainnet
 
-      # Step 7: Clean up unused Docker images
+      # Step 8: Clean up unused Docker images
       - name: Cleanup Docker Images
         run: docker image prune -f
