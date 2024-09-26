@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Image Using Docker Compose
 
 on:
   push:
@@ -12,25 +12,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout Alephium Stack from its repository
       - name: Checkout Alephium Stack
         uses: actions/checkout@v2
         with:
           repository: alephium/alephium-stack
           path: alephium-stack
 
+      # Set up Docker Buildx (required for Docker Compose)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      # Log in to Docker Hub using credentials stored in secrets
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # Dynamically edit the docker-compose.yml file to update the image field
+      - name: Modify Docker Compose File to Use Your Docker Hub Repo
+        run: |
+          cd alephium-stack/mainnet
+          # Replace the default Alephium image with your Docker Hub repo and tag
+          sed -i 's#alephium/alephium:v3.6.3#cyxeio/alphnode_test:latest#g' docker-compose.yml
+          
+      # Build and push the image using Docker Compose
       - name: Build and Push Docker Image
         run: |
-          docker build -t cyxeio/alphnode_test:latest -f ./alephium-stack/mainnet/Dockerfile .
-          docker push cyxeio/alphnode_test:latest
+          cd alephium-stack/mainnet
+          docker-compose build
+          docker-compose push
 
-      - name: Post Cleanup
+      # Clean up unused Docker images to free space
+      - name: Cleanup Docker Images
         run: docker image prune -f
