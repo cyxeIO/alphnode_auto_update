@@ -1,4 +1,4 @@
-name: Monitor and Update Alephium Image
+name: Monitor and Update Alephium Mainnet
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:  # Allows you to trigger the workflow manually
 
 jobs:
-  check-for-updates:
+  update-mainnet:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,71 +27,27 @@ jobs:
           chmod +x /usr/local/bin/docker-compose
           docker-compose --version
 
-      # Step 3: Dynamically create the Dockerfile if it doesn't exist
-      - name: Create Dockerfile
+      # Step 3: Use the Makefile to start the mainnet
+      - name: Start Mainnet
         run: |
-          cd alephium-stack/mainnet
-          if [ ! -f Dockerfile ]; then
-            echo "Dockerfile not found, creating Dockerfile."
-            cat << 'EOF' > Dockerfile
-            # Use the Alephium base image
-            FROM alephium/alephium:v3.6.3
+          cd alephium-stack
+          make start-mainnet
 
-            # Set working directory inside the container
-            WORKDIR /app
-
-            # Expose necessary ports
-            EXPOSE 9973
-
-            # Command to run when the container starts
-            CMD ["./start.sh"]
-            EOF
-          fi
-
-      # Step 4: Modify the `docker-compose.yml` to use build context instead of the image
-      - name: Modify Docker Compose File to Use Build Context
-        run: |
-          cd alephium-stack/mainnet
-          sed -i 's#image: alephium/alephium:v3.6.3#build:\n      context: .\n      dockerfile: Dockerfile#g' docker-compose.yml
-
-      # Step 5: Check if the file `latest_alephium_version` exists, and create it if not
-      - name: Check/Create Version File
-        run: |
-          if [ ! -f latest_alephium_version ]; then
-            echo "latest_alephium_version not found, creating the file."
-            echo "0.0.0" > latest_alephium_version  # Initialize with a dummy version if file doesn't exist
-          fi
-
-      # Step 6: Extract the current Alephium image version from the Alephium Stack repo
-      - name: Check Alephium Docker Image Version
-        id: check_version
-        run: |
-          cd alephium-stack/mainnet
-          current_version=$(grep 'image: alephium/alephium:' docker-compose.yml | awk -F: '{print $3}')
-          echo "Current Alephium image version: $current_version"
-          previous_version=$(cat ../../latest_alephium_version)
-          echo "Previous Alephium image version: $previous_version"
-          if [[ "$current_version" == "$previous_version" ]]; then
-            echo "No new version detected. Skipping build."
-            exit 0
-          fi
-          echo "::set-output name=current_version::$current_version"
-
-      # Step 7: Build and push the new Docker image if a new version is detected
-      - name: Build and Push Docker Image
+      # Step 4: Build the Docker image for mainnet
+      - name: Build Docker Image
         run: |
           cd alephium-stack/mainnet
           docker-compose build --no-cache
-          docker tag cyxeio/alphnode_test:latest cyxeio/alphnode_test:${{ steps.check_version.outputs.current_version }}
-          docker push cyxeio/alphnode_test:${{ steps.check_version.outputs.current_version }}
+          docker tag cyxeio/alphnode_test:latest cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
+          docker push cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
           docker push cyxeio/alphnode_test:latest
 
-      # Step 8: Update the `latest_alephium_version` file after a successful push
-      - name: Update Version File
+      # Step 5: Stop the mainnet after building
+      - name: Stop Mainnet
         run: |
-          echo "${{ steps.check_version.outputs.current_version }}" > latest_alephium_version
-          echo "Updated latest_alephium_version to ${{ steps.check_version.outputs.current_version }}"
+          cd alephium-stack
+          make stop-mainnet
 
-      # Step 9: Clean up unused Docker images
+      # Step 6: Clean up unused Docker images
       - name: Cleanup Docker Images
         run: docker image prune -f
