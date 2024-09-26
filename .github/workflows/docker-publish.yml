@@ -13,13 +13,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Fetch the latest version from Docker Hub for `cyxeio/alphnode_test`
+      # Step 1: Fetch the latest version from Docker Hub for `cyxeio/mainnet`
       - name: Get latest version from Docker Hub
         id: my_repo_version  # ID to reference in later steps
         run: |
-          latest_tag=$(curl -s https://registry.hub.docker.com/v1/repositories/cyxeio/mainnet/tags | jq -r '.[].name' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
-          echo "Latest version in cyxeio/mainnet is $latest_tag"
-          echo "::set-output name=tag::$latest_tag"
+          tags=$(curl -s https://registry.hub.docker.com/v1/repositories/cyxeio/mainnet/tags | jq -r '.[].name')
+          echo "Fetched tags: $tags"
+          latest_tag=$(echo "$tags" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          if [ -z "$latest_tag" ]; then
+            echo "No valid tag found"
+            exit 1
+          else
+            echo "Latest version in cyxeio/mainnet is $latest_tag"
+            echo "::set-output name=tag::$latest_tag"
+          fi
 
       # Step 2: Log in to Docker Hub
       - name: Log in to Docker Hub
@@ -28,10 +35,15 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}  # Your Docker Hub username
           password: ${{ secrets.DOCKER_PASSWORD }}  # Your Docker Hub password
 
-      # Step 3: Pull the pre-built Docker image from `cyxeio/alphnode_test`
+      # Step 3: Pull the pre-built Docker image from `cyxeio/mainnet`
       - name: Pull your Docker Image
         run: |
-          docker pull cyxeio/mainnet:${{ steps.my_repo_version.outputs.tag }}
+          if [ -z "${{ steps.my_repo_version.outputs.tag }}" ]; then
+            echo "No valid tag found, exiting."
+            exit 1
+          else
+            docker pull cyxeio/mainnet:${{ steps.my_repo_version.outputs.tag }}
+          fi
 
       # Step 4: Tag the Docker image with the new version and push it
       - name: Tag Docker Image
