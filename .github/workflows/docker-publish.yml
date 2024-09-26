@@ -71,13 +71,7 @@ jobs:
           		| grep -v 'sed'
           EOF
 
-      # Step 4: Use the Makefile to start the mainnet
-      - name: Start Mainnet
-        run: |
-          cd alephium-stack
-          make start-mainnet
-
-      # Step 5: Build the Docker image for mainnet
+      # Step 4: Build the Docker image for mainnet (Build the image from Dockerfile)
       - name: Build Docker Image
         run: |
           cd alephium-stack/mainnet
@@ -85,6 +79,12 @@ jobs:
           docker tag cyxeio/alphnode_test:latest cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
           docker push cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
           docker push cyxeio/alphnode_test:latest
+
+      # Step 5: Use the Makefile to start the mainnet (after the image has been built)
+      - name: Start Mainnet
+        run: |
+          cd alephium-stack
+          make start-mainnet
 
       # Step 6: Stop the mainnet after building
       - name: Stop Mainnet
