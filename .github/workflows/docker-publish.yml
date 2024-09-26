@@ -1,8 +1,11 @@
 name: Monitor and Update Alephium Image
 
 on:
+  push:
+    branches:
+      - main
   schedule:
-    - cron: '0 0 * * *'  # Run daily at midnight to check for updates
+    - cron: '0 0 * * *'  # Run daily at midnight
   workflow_dispatch:  # Allows you to trigger the workflow manually
 
 jobs:
@@ -17,7 +20,14 @@ jobs:
           repository: alephium/alephium-stack
           path: alephium-stack
 
-      # Step 2: Check if the file `latest_alephium_version` exists, and create it if not
+      # Step 2: Install Docker Compose
+      - name: Install Docker Compose
+        run: |
+          curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+
+      # Step 3: Check if the file `latest_alephium_version` exists, and create it if not
       - name: Check/Create Version File
         run: |
           if [ ! -f latest_alephium_version ]; then
@@ -25,7 +35,7 @@ jobs:
             echo "0.0.0" > latest_alephium_version  # Initialize with a dummy version if file doesn't exist
           fi
 
-      # Step 3: Extract the current Alephium image version from the Alephium Stack repo
+      # Step 4: Extract the current Alephium image version from the Alephium Stack repo
       - name: Check Alephium Docker Image Version
         id: check_version
         run: |
@@ -43,7 +53,7 @@ jobs:
           # Set the current version as an output for later steps
           echo "::set-output name=current_version::$current_version"
 
-      # Step 4: Build and push the new Docker image if a new version is detected
+      # Step 5: Build and push the new Docker image if a new version is detected
       - name: Build and Push Docker Image
         run: |
           cd alephium-stack/mainnet
@@ -54,13 +64,12 @@ jobs:
           docker push cyxeio/alphnode_test:${{ steps.check_version.outputs.current_version }}
           docker push cyxeio/alphnode_test:latest
 
-      # Step 5: Update the `latest_alephium_version` file after a successful push
+      # Step 6: Update the `latest_alephium_version` file after a successful push
       - name: Update Version File
         run: |
           echo "${{ steps.check_version.outputs.current_version }}" > latest_alephium_version
           echo "Updated latest_alephium_version to ${{ steps.check_version.outputs.current_version }}"
 
-      # Clean up unused Docker images
+      # Step 7: Clean up unused Docker images
       - name: Cleanup Docker Images
         run: docker image prune -f
-#test
