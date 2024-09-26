@@ -61,7 +61,7 @@ jobs:
       - name: Build and Push Docker Image
         run: |
           cd alephium-stack/mainnet
-          docker-compose build || true  # Continue even if build fails
+          docker-compose build --no-cache || true  # Force build without cache, continue even if build fails
           docker-compose push || true  # Continue even if push fails
           docker-compose logs || true  # Print logs to see what happened
 
