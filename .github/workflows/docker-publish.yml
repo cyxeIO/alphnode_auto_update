@@ -29,14 +29,21 @@ jobs:
       - name: Tag Docker Image
         run: |
           docker tag alephium/alephium:v3.6.3 cyxeio/alphnode_test:latest
+          docker tag alephium/alephium:v3.6.3 cyxeio/alphnode_test:v3.6.3  # Add explicit v3.6.3 tag
           docker tag alephium/alephium:v3.6.3 cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
 
-      # Step 4: Push the newly tagged image to your Docker Hub repository
+      # Step 4: Verify the tags created locally before pushing
+      - name: List Docker Images and Tags
+        run: |
+          docker images  # List all images and tags
+
+      # Step 5: Push the newly tagged image to your Docker Hub repository
       - name: Push Docker Image to Docker Hub
         run: |
           docker push cyxeio/alphnode_test:latest
+          docker push cyxeio/alphnode_test:v3.6.3  # Push the v3.6.3 tag
           docker push cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
 
-      # Step 5: Clean up unused Docker images to save space
+      # Step 6: Clean up unused Docker images to save space
       - name: Cleanup Docker Images
         run: docker image prune -f
