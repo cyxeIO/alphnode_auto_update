@@ -1,4 +1,4 @@
-name: Monitor and Update Alephium Mainnet
+name: Monitor and Update cyxeio/mainnet
 
 on:
   push:
@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Fetch the latest Alephium image tag from Docker Hub
-      - name: Get latest Alephium version
-        id: alephium_version  # Set an ID so we can reference the output in later steps
+      # Step 1: Fetch the latest version from Docker Hub for `cyxeio/alphnode_test`
+      - name: Get latest version from Docker Hub
+        id: my_repo_version  # ID to reference in later steps
         run: |
-          latest_tag=$(curl -s https://registry.hub.docker.com/v1/repositories/alephium/alephium/tags | jq -r '.[].name' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
-          echo "Latest Alephium version is $latest_tag"
+          latest_tag=$(curl -s https://registry.hub.docker.com/v1/repositories/cyxeio/mainnet/tags | jq -r '.[].name' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          echo "Latest version in cyxeio/mainnet is $latest_tag"
           echo "::set-output name=tag::$latest_tag"
 
       # Step 2: Log in to Docker Hub
@@ -28,17 +28,17 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}  # Your Docker Hub username
           password: ${{ secrets.DOCKER_PASSWORD }}  # Your Docker Hub password
 
-      # Step 3: Pull the latest Alephium Docker image
-      - name: Pull Alephium Docker Image
+      # Step 3: Pull the pre-built Docker image from `cyxeio/alphnode_test`
+      - name: Pull your Docker Image
         run: |
-          docker pull alephium/alephium:${{ steps.alephium_version.outputs.tag }}  # Pull the latest version dynamically
+          docker pull cyxeio/mainnet:${{ steps.my_repo_version.outputs.tag }}
 
-      # Step 4: Tag the Docker image for your Docker Hub repo
+      # Step 4: Tag the Docker image with the new version and push it
       - name: Tag Docker Image
         run: |
-          docker tag alephium/alephium:${{ steps.alephium_version.outputs.tag }} cyxeio/alphnode_test:latest
-          docker tag alephium/alephium:${{ steps.alephium_version.outputs.tag }} cyxeio/alphnode_test:${{ steps.alephium_version.outputs.tag }}
-          docker tag alephium/alephium:${{ steps.alephium_version.outputs.tag }} cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
+          docker tag cyxeio/mainnet:${{ steps.my_repo_version.outputs.tag }} cyxeio/mainnet:latest
+          docker tag cyxeio/mainnet:${{ steps.my_repo_version.outputs.tag }} cyxeio/mainnet:${{ steps.my_repo_version.outputs.tag }}
+          docker tag cyxeio/mainnet:${{ steps.my_repo_version.outputs.tag }} cyxeio/mainnet:$(date +%Y%m%d%H%M)
 
       # Step 5: Verify the tags created locally before pushing
       - name: List Docker Images and Tags
@@ -48,9 +48,9 @@ jobs:
       # Step 6: Push the newly tagged image to your Docker Hub repository
       - name: Push Docker Image to Docker Hub
         run: |
-          docker push cyxeio/alphnode_test:latest
-          docker push cyxeio/alphnode_test:${{ steps.alephium_version.outputs.tag }}  # Push the versioned tag
-          docker push cyxeio/alphnode_test:$(date +%Y%m%d%H%M)
+          docker push cyxeio/mainnet:latest
+          docker push cyxeio/mainnet:${{ steps.my_repo_version.outputs.tag }}  # Push the versioned tag
+          docker push cyxeio/mainnet:$(date +%Y%m%d%H%M)
 
       # Step 7: Clean up unused Docker images to save space
       - name: Cleanup Docker Images
