@@ -1,4 +1,4 @@
-name: Build and Push Docker Image Using Docker Compose
+name: Pull and Push Prebuilt Docker Image Using Docker Compose
 
 on:
   push:
@@ -18,10 +18,6 @@ jobs:
         with:
           repository: alephium/alephium-stack
           path: alephium-stack
-
-      # Set up Docker Buildx (required for Docker Compose)
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
 
       # Install Docker Compose using official method
       - name: Install Docker Compose
@@ -44,11 +40,11 @@ jobs:
           # Replace the default Alephium image with your Docker Hub repo and tag
           sed -i 's#alephium/alephium:v3.6.3#cyxeio/alphnode_test:latest#g' docker-compose.yml
 
-      # Build and push the image using Docker Compose
-      - name: Build and Push Docker Image
+      # Pull the latest image (if it has changed) and push to Docker Hub
+      - name: Pull and Push Image
         run: |
           cd alephium-stack/mainnet
-          docker-compose build
+          docker-compose pull
           docker-compose push
 
       # Clean up unused Docker images to free space
