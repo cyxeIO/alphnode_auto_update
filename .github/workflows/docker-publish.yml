@@ -57,14 +57,19 @@ jobs:
           cd alephium-stack/mainnet
           sed -i 's#image: alephium/alephium:v3.6.3#build:\n      context: .\n      dockerfile: Dockerfile#g' docker-compose.yml
 
-      # Build and push the image using Docker Compose and output logs
-      - name: Build and Push Docker Image
+      # Build the Docker image with Docker Compose and tag it
+      - name: Build Docker Image
         run: |
           cd alephium-stack/mainnet
           docker-compose build --no-cache || true  # Force build without cache, continue even if build fails
-          docker-compose push || true  # Continue even if push fails
-          docker-compose logs || true  # Print logs to see what happened
+
+      # Tag the image explicitly before pushing
+      - name: Tag and Push Docker Image
+        run: |
+          docker tag cyxeio/alphnode_test:latest cyxeio/alphnode_test:latest
+          docker push cyxeio/alphnode_test:latest
 
       # Clean up unused Docker images to free space
       - name: Cleanup Docker Images
         run: docker image prune -f
+
