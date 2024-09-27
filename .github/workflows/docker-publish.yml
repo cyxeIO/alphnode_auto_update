@@ -34,8 +34,7 @@ jobs:
 
       # Step 3: Pull the latest Alephium Docker image based on the fetched version
       - name: Pull Latest Alephium Docker Image
-        run: |
-          docker pull alephium/alephium:${{ steps.fetch_version.outputs.version }}
+        run: docker pull alephium/alephium:${{ steps.fetch_version.outputs.version }}
 
       # Step 4: Tag the Docker image for your Docker Hub repo
       - name: Tag Docker Image
@@ -46,8 +45,7 @@ jobs:
 
       # Step 5: Verify the tags created locally before pushing
       - name: List Docker Images and Tags
-        run: |
-          docker images
+        run: docker images
 
       # Step 6: Push the newly tagged image to your Docker Hub repository
       - name: Push Docker Image to Docker Hub
