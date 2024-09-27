@@ -20,22 +20,23 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}  # Your Docker Hub username
           password: ${{ secrets.DOCKER_PASSWORD }}  # Your Docker Hub password
 
-      # Step 2: Fetch the latest Alephium Docker image version in x.x.x format
+      # Step 2: Fetch the latest Alephium Docker image version in x.x.x format (strip suffixes)
       - name: Fetch Latest Alephium Version
         id: fetch_version
         run: |
           LATEST_VERSION=$(curl -s https://hub.docker.com/v2/repositories/alephium/alephium/tags/?page_size=1 | jq -r '.results[0].name')
+          CLEAN_VERSION=$(echo "$LATEST_VERSION" | sed 's/-.*//')  # Strip suffixes after version number
           echo "Fetched version: $LATEST_VERSION"
-          if [[ "$LATEST_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::set-output name=version::$LATEST_VERSION"
+          echo "Cleaned version: $CLEAN_VERSION"
+          if [[ "$CLEAN_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::set-output name=version::$CLEAN_VERSION"
           else
-            echo "Error: Version $LATEST_VERSION does not match x.x.x format"
+            echo "Error: Version $CLEAN_VERSION does not match x.x.x format"
             exit 1
 
-      # Step 3: Pull the latest Alephium Docker image based on the fetched version
+      # Step 3: Pull the latest Alephium Docker image based on the cleaned version
       - name: Pull Latest Alephium Docker Image
-        run: |
-          docker pull alephium/alephium:${{ steps.fetch_version.outputs.version }}
+        run: docker pull alephium/alephium:${{ steps.fetch_version.outputs.version }}
 
       # Step 4: Tag the Docker image for your Docker Hub repo
       - name: Tag Docker Image
