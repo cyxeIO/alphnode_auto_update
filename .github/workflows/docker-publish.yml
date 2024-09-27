@@ -25,11 +25,12 @@ jobs:
         id: fetch_version
         shell: bash
         run: |
+          # Fetch latest version from Docker Hub
           LATEST_VERSION=$(curl -s https://hub.docker.com/v2/repositories/alephium/alephium/tags/?page_size=1 | jq -r '.results[0].name')
           echo "Fetched version: $LATEST_VERSION"
           
-          # Extract the version in x.x.x format only, ignoring suffixes
-          CLEAN_VERSION=$(echo $LATEST_VERSION | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
+          # Remove 'v' prefix if present and extract x.x.x format only
+          CLEAN_VERSION=$(echo $LATEST_VERSION | sed 's/^v//' | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
           
           if [[ -z "$CLEAN_VERSION" ]]; then
             echo "Error: Could not extract valid version from $LATEST_VERSION"
