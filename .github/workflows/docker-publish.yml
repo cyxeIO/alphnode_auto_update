@@ -25,16 +25,17 @@ jobs:
         id: fetch_version
         run: |
           LATEST_VERSION=$(curl -s https://hub.docker.com/v2/repositories/alephium/alephium/tags/?page_size=1 | jq -r '.results[0].name')
+          echo "Fetched version: $LATEST_VERSION"
           if [[ "$LATEST_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Latest Alephium version: $LATEST_VERSION"
             echo "::set-output name=version::$LATEST_VERSION"
           else
-            echo "Error: Version does not match x.x.x format"
+            echo "Error: Version $LATEST_VERSION does not match x.x.x format"
             exit 1
 
       # Step 3: Pull the latest Alephium Docker image based on the fetched version
       - name: Pull Latest Alephium Docker Image
-        run: docker pull alephium/alephium:${{ steps.fetch_version.outputs.version }}
+        run: |
+          docker pull alephium/alephium:${{ steps.fetch_version.outputs.version }}
 
       # Step 4: Tag the Docker image for your Docker Hub repo
       - name: Tag Docker Image
