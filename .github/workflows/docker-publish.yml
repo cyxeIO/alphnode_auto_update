@@ -23,14 +23,20 @@ jobs:
       # Step 2: Fetch the latest Alephium Docker image version in x.x.x format
       - name: Fetch Latest Alephium Version
         id: fetch_version
+        shell: bash
         run: |
           LATEST_VERSION=$(curl -s https://hub.docker.com/v2/repositories/alephium/alephium/tags/?page_size=1 | jq -r '.results[0].name')
           echo "Fetched version: $LATEST_VERSION"
-          if [[ "$LATEST_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::set-output name=version::$LATEST_VERSION"
+          
+          # Strip any non-numeric suffixes (like '-adoptjdk')
+          CLEAN_VERSION=$(echo $LATEST_VERSION | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
+          
+          if [[ "$CLEAN_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::set-output name=version::$CLEAN_VERSION"
           else
             echo "Error: Version $LATEST_VERSION does not match x.x.x format"
             exit 1
+          fi
 
       # Step 3: Pull the latest Alephium Docker image based on the fetched version
       - name: Pull Latest Alephium Docker Image
