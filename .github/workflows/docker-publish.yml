@@ -28,15 +28,16 @@ jobs:
           LATEST_VERSION=$(curl -s https://hub.docker.com/v2/repositories/alephium/alephium/tags/?page_size=1 | jq -r '.results[0].name')
           echo "Fetched version: $LATEST_VERSION"
           
-          # Strip any non-numeric suffixes (like '-adoptjdk')
+          # Extract the version in x.x.x format only, ignoring suffixes
           CLEAN_VERSION=$(echo $LATEST_VERSION | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
           
-          if [[ "$CLEAN_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::set-output name=version::$CLEAN_VERSION"
-          else
-            echo "Error: Version $LATEST_VERSION does not match x.x.x format"
+          if [[ -z "$CLEAN_VERSION" ]]; then
+            echo "Error: Could not extract valid version from $LATEST_VERSION"
             exit 1
           fi
+          
+          echo "Clean version: $CLEAN_VERSION"
+          echo "::set-output name=version::$CLEAN_VERSION"
 
       # Step 3: Pull the latest Alephium Docker image based on the fetched version
       - name: Pull Latest Alephium Docker Image
