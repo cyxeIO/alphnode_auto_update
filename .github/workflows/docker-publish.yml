@@ -36,23 +36,28 @@ jobs:
           
           echo "::set-output name=version::$LATEST_VERSION"
 
-      # Step 3: Create the custom Dockerfile
+      # Step 3: Create the custom Dockerfile with snapshot loading
       - name: Create Custom Dockerfile with Snapshot Loading
         run: |
           cat <<EOF > Dockerfile
           FROM alephium/alephium:${{ steps.fetch_version.outputs.version }}
-          
+
           ENV ALEPHIUM_HOME=/alephium-home/.alephium
           ENV ALEPHIUM_NETWORK=mainnet
+          ENV SNAPSHOT_URL="https://alephium-archives.org/archives/mainnet/full-node-data/full-node-data-mainnet-with-indexes-2024-10-09.tar"
+          ENV SNAPSHOT_FILE="/tmp/snapshot.tar"
           
           # Switch to root to install necessary packages
           USER root
           
-          # Fix permissions issue and install curl
+          # Fix permissions issue, install curl, download snapshot fully, and extract
           RUN mkdir -p /var/lib/apt/lists/partial && \
               apt-get update && apt-get install -y curl && \
-              curl -L -C - "https://alephium-archives.org/archives/mainnet/full-node-data/full-node-data-mainnet-with-indexes-2024-10-09.tar" | \
-              tar --strip-components=1 -xv -C \$ALEPHIUM_HOME && \
+              echo "Downloading Alephium snapshot to \$SNAPSHOT_FILE" && \
+              curl -L -C - "\$SNAPSHOT_URL" -o "\$SNAPSHOT_FILE" && \
+              echo "Snapshot downloaded, now extracting..." && \
+              tar --strip-components=1 -xv -f "\$SNAPSHOT_FILE" -C \$ALEPHIUM_HOME && \
+              rm "\$SNAPSHOT_FILE" && \
               apt-get clean
           
           # Switch back to non-root user
@@ -61,7 +66,7 @@ jobs:
           ENTRYPOINT ["/bin/bash", "-c", "/alephium/bin/alephium-entrypoint.sh"]
           EOF
 
-      # Step 4: Build the Docker image with an 8-hour timeout
+      # Step 4: Build the Docker image with a timeout of 8 hours
       - name: Build Docker Image with Snapshot
         timeout-minutes: 480  # Set the timeout to 8 hours
         run: |
