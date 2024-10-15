@@ -36,22 +36,7 @@ jobs:
           
           echo "::set-output name=version::$LATEST_VERSION"
 
-      # Step 3: Fetch the latest snapshot file name from _latest_with-indexes.txt and build the full snapshot URL
-      - name: Fetch Latest Snapshot URL
-        id: fetch_snapshot
-        run: |
-          BASE_URL="https://alephium-archives.org/archives/mainnet/full-node-data"
-          SNAPSHOT_FILE=$(curl -s ${BASE_URL}/_latest_with-indexes.txt)
-          if [[ -z "$SNAPSHOT_FILE" ]]; then
-            echo "Error: Could not fetch latest snapshot file."
-            exit 1
-          fi
-          # Construct the full snapshot URL
-          SNAPSHOT_URL="${BASE_URL}/${SNAPSHOT_FILE}"
-          echo "Latest Snapshot URL: $SNAPSHOT_URL"
-          echo "::set-output name=snapshot_url::$SNAPSHOT_URL"
-
-      # Step 4: Create a custom Dockerfile to load the latest snapshot inline
+      # Step 3: Create a custom Dockerfile with a static snapshot URL
       - name: Create Custom Dockerfile with Snapshot Loading
         run: |
           cat <<EOF > Dockerfile
@@ -66,7 +51,7 @@ jobs:
           # Fix permissions issue and install curl
           RUN mkdir -p /var/lib/apt/lists/partial && \
               apt-get update && apt-get install -y curl && \
-              curl -L "${{ steps.fetch_snapshot.outputs.snapshot_url }}" | tar --strip-components=1 -xv -C \$ALEPHIUM_HOME && \
+              curl -L "https://alephium-archives.org/archives/mainnet/full-node-data/full-node-data-mainnet-with-indexes-2024-10-09.tar" | tar --strip-components=1 -xv -C \$ALEPHIUM_HOME && \
               apt-get clean
           
           # Switch back to non-root user
@@ -75,28 +60,28 @@ jobs:
           ENTRYPOINT ["/bin/bash", "-c", "/alephium/bin/alephium-entrypoint.sh"]
           EOF
 
-      # Step 5: Build the custom Docker image with snapshot loaded inline
+      # Step 4: Build the custom Docker image with snapshot loaded inline
       - name: Build Docker Image with Snapshot
         run: |
           docker build -t dohmoney/mainnet:latest .
 
-      # Step 6: Tag the Docker image
+      # Step 5: Tag the Docker image
       - name: Tag Docker Image
         run: |
           docker tag dohmoney/mainnet:latest dohmoney/mainnet:${{ steps.fetch_version.outputs.version }}
           docker tag dohmoney/mainnet:latest dohmoney/mainnet:$(date +%Y%m%d%H%M)
 
-      # Step 7: Verify the tags created locally before pushing
+      # Step 6: Verify the tags created locally before pushing
       - name: List Docker Images and Tags
         run: docker images
 
-      # Step 8: Push the newly tagged image to your Docker Hub repository
+      # Step 7: Push the newly tagged image to your Docker Hub repository
       - name: Push Docker Image to Docker Hub
         run: |
           docker push dohmoney/mainnet:latest
           docker push dohmoney/mainnet:${{ steps.fetch_version.outputs.version }}
           docker push dohmoney/mainnet:$(date +%Y%m%d%H%M)
 
-      # Step 9: Clean up unused Docker images to save space
+      # Step 8: Clean up unused Docker images to save space
       - name: Cleanup Docker Images
         run: docker image prune -f
