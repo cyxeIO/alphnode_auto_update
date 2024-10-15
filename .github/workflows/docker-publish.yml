@@ -36,7 +36,7 @@ jobs:
           
           echo "::set-output name=version::$LATEST_VERSION"
 
-      # Step 3: Create a custom Dockerfile with static snapshot URL
+      # Step 3: Create the custom Dockerfile
       - name: Create Custom Dockerfile with Snapshot Loading
         run: |
           cat <<EOF > Dockerfile
@@ -51,7 +51,8 @@ jobs:
           # Fix permissions issue and install curl
           RUN mkdir -p /var/lib/apt/lists/partial && \
               apt-get update && apt-get install -y curl && \
-              curl -L "https://alephium-archives.org/archives/mainnet/full-node-data/full-node-data-mainnet-with-indexes-2024-10-09.tar" | tar --strip-components=1 -xv -C \$ALEPHIUM_HOME && \
+              curl -L -C - "https://alephium-archives.org/archives/mainnet/full-node-data/full-node-data-mainnet-with-indexes-2024-10-09.tar" | \
+              tar --strip-components=1 -xv -C \$ALEPHIUM_HOME && \
               apt-get clean
           
           # Switch back to non-root user
@@ -60,7 +61,7 @@ jobs:
           ENTRYPOINT ["/bin/bash", "-c", "/alephium/bin/alephium-entrypoint.sh"]
           EOF
 
-      # Step 4: Build the custom Docker image with 8-hour timeout
+      # Step 4: Build the Docker image with an 8-hour timeout
       - name: Build Docker Image with Snapshot
         timeout-minutes: 480  # Set the timeout to 8 hours
         run: |
