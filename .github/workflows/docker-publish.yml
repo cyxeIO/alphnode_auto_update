@@ -69,8 +69,9 @@ jobs:
           
           # Fix permissions issue and install curl
           RUN mkdir -p /var/lib/apt/lists/partial && \
-              apt-get update --no-cache && apt-get install -y curl && \
-              curl -L "${{ steps.fetch_snapshot.outputs.snapshot_url }}" | tar -xzf - -C \$ALEPHIUM_HOME
+              apt-get update && apt-get install -y curl && \
+              curl -L "${{ steps.fetch_snapshot.outputs.snapshot_url }}" | tar -xzf - -C \$ALEPHIUM_HOME && \
+              apt-get clean
           
           # Switch back to non-root user
           USER alephium
