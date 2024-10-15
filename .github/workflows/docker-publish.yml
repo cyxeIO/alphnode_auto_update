@@ -36,12 +36,7 @@ jobs:
           
           echo "::set-output name=version::$LATEST_VERSION"
 
-      # Step 3: Pull the latest Alephium Docker image based on the fetched version
-      - name: Pull Latest Alephium Docker Image
-        run: |
-          docker pull alephium/alephium:${{ steps.fetch_version.outputs.version }}
-
-      # Step 4: Fetch the latest snapshot URL from _latest_with-indexes.txt
+      # Step 3: Fetch the latest snapshot file name from _latest_with-indexes.txt and build the full snapshot URL
       - name: Fetch Latest Snapshot URL
         id: fetch_snapshot
         run: |
@@ -51,11 +46,12 @@ jobs:
             echo "Error: Could not fetch latest snapshot file."
             exit 1
           fi
+          # Construct the full snapshot URL
           SNAPSHOT_URL="${BASE_URL}/${SNAPSHOT_FILE}"
           echo "Latest Snapshot URL: $SNAPSHOT_URL"
           echo "::set-output name=snapshot_url::$SNAPSHOT_URL"
 
-      # Step 5: Create a custom Dockerfile to load the latest snapshot inline
+      # Step 4: Create a custom Dockerfile to load the latest snapshot inline
       - name: Create Custom Dockerfile with Snapshot Loading
         run: |
           cat <<EOF > Dockerfile
@@ -79,28 +75,28 @@ jobs:
           ENTRYPOINT ["/bin/bash", "-c", "/alephium/bin/alephium-entrypoint.sh"]
           EOF
 
-      # Step 6: Build the custom Docker image with snapshot loaded inline
+      # Step 5: Build the custom Docker image with snapshot loaded inline
       - name: Build Docker Image with Snapshot
         run: |
           docker build -t dohmoney/mainnet:latest .
 
-      # Step 7: Tag the Docker image
+      # Step 6: Tag the Docker image
       - name: Tag Docker Image
         run: |
           docker tag dohmoney/mainnet:latest dohmoney/mainnet:${{ steps.fetch_version.outputs.version }}
           docker tag dohmoney/mainnet:latest dohmoney/mainnet:$(date +%Y%m%d%H%M)
 
-      # Step 8: Verify the tags created locally before pushing
+      # Step 7: Verify the tags created locally before pushing
       - name: List Docker Images and Tags
         run: docker images
 
-      # Step 9: Push the newly tagged image to your Docker Hub repository
+      # Step 8: Push the newly tagged image to your Docker Hub repository
       - name: Push Docker Image to Docker Hub
         run: |
           docker push dohmoney/mainnet:latest
           docker push dohmoney/mainnet:${{ steps.fetch_version.outputs.version }}
           docker push dohmoney/mainnet:$(date +%Y%m%d%H%M)
 
-      # Step 10: Clean up unused Docker images to save space
+      # Step 9: Clean up unused Docker images to save space
       - name: Cleanup Docker Images
         run: docker image prune -f
