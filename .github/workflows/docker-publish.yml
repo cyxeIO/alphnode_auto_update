@@ -36,7 +36,7 @@ jobs:
           
           echo "::set-output name=version::$LATEST_VERSION"
 
-      # Step 3: Create a custom Dockerfile with a static snapshot URL
+      # Step 3: Create a custom Dockerfile with static snapshot URL
       - name: Create Custom Dockerfile with Snapshot Loading
         run: |
           cat <<EOF > Dockerfile
@@ -60,8 +60,9 @@ jobs:
           ENTRYPOINT ["/bin/bash", "-c", "/alephium/bin/alephium-entrypoint.sh"]
           EOF
 
-      # Step 4: Build the custom Docker image with snapshot loaded inline
+      # Step 4: Build the custom Docker image with 8-hour timeout
       - name: Build Docker Image with Snapshot
+        timeout-minutes: 480  # Set the timeout to 8 hours
         run: |
           docker build -t dohmoney/mainnet:latest .
 
