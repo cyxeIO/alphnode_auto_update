@@ -46,13 +46,21 @@ jobs:
         run: |
           cat <<EOF > Dockerfile
           FROM alephium/alephium:${{ steps.fetch_version.outputs.version }}
+          
           ENV ALEPHIUM_HOME=/alephium-home/.alephium
           ENV ALEPHIUM_NETWORK=mainnet
           
-          # Download and load the latest snapshot inline into the container
-          RUN apt-get update && apt-get install -y curl && \
+          # Switch to root to install necessary packages
+          USER root
+          
+          # Fix permissions issue and install curl
+          RUN mkdir -p /var/lib/apt/lists/partial && \
+              apt-get update --no-cache && apt-get install -y curl && \
               curl -L https://archives.alephium.org/mainnet/snapshot.tar.gz | tar -xzf - -C \$ALEPHIUM_HOME
-
+          
+          # Switch back to non-root user
+          USER alephium
+          
           ENTRYPOINT ["/bin/bash", "-c", "/alephium/bin/alephium-entrypoint.sh"]
           EOF
 
