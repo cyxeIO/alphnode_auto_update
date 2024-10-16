@@ -10,7 +10,7 @@ on:
 
 jobs:
   pull-tag-and-push-image:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted  # Use the self-hosted runner
 
     steps:
       # Step 1: Log in to Docker Hub
@@ -35,13 +35,12 @@ jobs:
           fi
           
           echo "::set-output name=version::$LATEST_VERSION"
-
+          
       # Step 3: Create the custom Dockerfile with snapshot loading
       - name: Create Custom Dockerfile with Snapshot Loading
         run: |
           cat <<EOF > Dockerfile
           FROM alephium/alephium:${{ steps.fetch_version.outputs.version }}
-
           ENV ALEPHIUM_HOME=/alephium-home/.alephium
           ENV ALEPHIUM_NETWORK=mainnet
           ENV SNAPSHOT_URL="https://alephium-archives.org/archives/mainnet/full-node-data/full-node-data-mainnet-with-indexes-2024-10-09.tar"
