@@ -10,21 +10,22 @@ on:
 
 jobs:
   pull-tag-and-push-image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # This will run on GitHub-hosted runner (can be switched to self-hosted)
 
     steps:
       # Step 1: Log in to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}  # Your Docker Hub username
-          password: ${{ secrets.DOCKER_PASSWORD }}  # Your Docker Hub password
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Step 2: Fetch the latest Alephium Docker image version (including suffixes like '-adoptjdk')
+      # Step 2: Fetch the latest Alephium Docker image version
       - name: Fetch Latest Alephium Version
         id: fetch_version
         shell: bash
         run: |
+          # Fetch latest version from Docker Hub
           LATEST_VERSION=$(curl -s https://hub.docker.com/v2/repositories/alephium/alephium/tags/?page_size=1 | jq -r '.results[0].name')
           echo "Fetched version: $LATEST_VERSION"
           
@@ -35,42 +36,49 @@ jobs:
           
           echo "::set-output name=version::$LATEST_VERSION"
 
-      # Step 3: Download the Snapshot File from the provided URL
-      - name: Download Snapshot File
+      # Step 3: Pull the latest Alephium Docker image
+      - name: Pull Latest Alephium Docker Image
         run: |
-          # URL for the snapshot file
-          SNAPSHOT_URL="https://archives.alephium.org/archives/mainnet/full-node-data/full-node-data--without-indexes-2024-12-14.tar"
-          
-          # Download the snapshot file
-          echo "Downloading snapshot file from $SNAPSHOT_URL..."
-          curl -L -o full-node-data.tar $SNAPSHOT_URL
-          
-          # Verify the file was downloaded
-          if [ ! -f "full-node-data.tar" ]; then
-            echo "Error: Snapshot file download failed."
-            exit 1
-          fi
-          echo "Snapshot file downloaded successfully."
+          docker pull alephium/alephium:${{ steps.fetch_version.outputs.version }}
 
-      # Step 4: Build Docker Image with Snapshot
-      - name: Build Docker Image with Snapshot
-        run: |
-          # Build Docker image with the downloaded snapshot
-          docker build --build-arg SNAPSHOT_PATH=full-node-data.tar -t dohmoney/mainnet .
-
-      # Step 5: Tag the Docker image
+      # Step 4: Tag the Docker image for your Docker Hub repo
       - name: Tag Docker Image
         run: |
-          docker tag dohmoney/mainnet:latest dohmoney/mainnet:${{ steps.fetch_version.outputs.version }}
-          docker tag dohmoney/mainnet:latest dohmoney/mainnet:$(date +%Y%m%d%H%M)
+          docker tag alephium/alephium:${{ steps.fetch_version.outputs.version }} dohmoney/mainnet:latest
+          docker tag alephium/alephium:${{ steps.fetch_version.outputs.version }} dohmoney/mainnet:${{ steps.fetch_version.outputs.version }}
+          docker tag alephium/alephium:${{ steps.fetch_version.outputs.version }} dohmoney/mainnet:$(date +%Y%m%d%H%M)
 
-      # Step 6: Push the Docker Image to Docker Hub
+      # Step 5: Verify the tags created locally before pushing
+      - name: List Docker Images and Tags
+        run: docker images
+
+      # Step 6: Push the newly tagged image to your Docker Hub repository
       - name: Push Docker Image to Docker Hub
         run: |
           docker push dohmoney/mainnet:latest
           docker push dohmoney/mainnet:${{ steps.fetch_version.outputs.version }}
           docker push dohmoney/mainnet:$(date +%Y%m%d%H%M)
 
-      # Step 7: Clean up unused Docker images
+      # Step 7: Install AzCopy
+      - name: Install AzCopy
+        run: |
+          curl -sL https://aka.ms/downloadazcopy-v10-linux | sudo bash
+
+      # Step 8: Upload the snapshot to Azure Blob Storage
+      - name: Upload Snapshot to Azure Blob Storage
+        env:
+          AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+          AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+        run: |
+          echo "Checking if the snapshot file exists in Downloads"
+          if [ -f "/Users/scarnes/Downloads/full-node-data--without-indexes-2024-12-14.tar" ]; then
+            echo "Snapshot file found, uploading to Azure Blob Storage."
+            azcopy copy "/Users/scarnes/Downloads/full-node-data--without-indexes-2024-12-14.tar" "https://${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/<your-container-name>/<blob-name>?${AZURE_STORAGE_SAS_TOKEN}" --resume
+          else
+            echo "Snapshot file does not exist at the specified path."
+            exit 1
+          fi
+
+      # Step 9: Clean up unused Docker images to save space
       - name: Cleanup Docker Images
         run: docker image prune -f
