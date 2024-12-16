@@ -33,10 +33,9 @@ jobs:
           fi
           echo "::set-output name=version::$LATEST_VERSION"
 
-      # Step 3: Upload Snapshot file manually
-      # This step is for when you trigger the workflow manually
+      # Step 3: Upload Snapshot file manually (use latest version v3)
       - name: Upload Snapshot File
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: snapshot-file
           path: /Users/scarnes/Downloads/full-node-data--without-indexes-2024-12-14.tar
