@@ -33,12 +33,23 @@ jobs:
           fi
           echo "::set-output name=version::$LATEST_VERSION"
 
-      # Step 3: Upload Snapshot file manually (use latest version v3)
-      - name: Upload Snapshot File
+      # Step 3: Ensure the snapshot file exists and upload it
+      - name: Upload Snapshot File (Ensure the file exists first)
+        run: |
+          # Make sure the snapshot file exists before uploading
+          if [ -f "/Users/scarnes/Downloads/full-node-data--without-indexes-2024-12-14.tar" ]; then
+            echo "Snapshot file found, uploading artifact."
+            cp /Users/scarnes/Downloads/full-node-data--without-indexes-2024-12-14.tar ./full-node-data.tar
+          else
+            echo "Snapshot file does not exist at the specified path."
+            exit 1
+          fi
+
+      - name: Upload Snapshot as Artifact
         uses: actions/upload-artifact@v3
         with:
           name: snapshot-file
-          path: /Users/scarnes/Downloads/full-node-data--without-indexes-2024-12-14.tar
+          path: ./full-node-data.tar
 
       # Step 4: Download the Snapshot Artifact
       - name: Download Snapshot File
@@ -50,7 +61,7 @@ jobs:
       - name: Build Docker Image with Snapshot
         run: |
           # Extract the snapshot file name
-          SNAPSHOT_FILE="./full-node-data--without-indexes-2024-12-14.tar"
+          SNAPSHOT_FILE="./full-node-data.tar"
           
           # Build Docker image with the snapshot
           docker build --build-arg SNAPSHOT_PATH=$SNAPSHOT_FILE -t dohmoney/mainnet .
