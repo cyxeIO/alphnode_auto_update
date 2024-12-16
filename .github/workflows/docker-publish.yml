@@ -40,14 +40,30 @@ jobs:
           name: snapshot-file
           path: /Users/scarnes/Downloads/full-node-data--without-indexes-2024-12-14.tar
 
-      # Step 4: Pull Latest Alephium Docker Image
-      - name: Pull Latest Alephium Docker Image
-        run: |
-          docker pull alephium/alephium:${{ steps.fetch_version.outputs.version }}
+      # Step 4: Download the Snapshot Artifact
+      - name: Download Snapshot File
+        uses: actions/download-artifact@v3
+        with:
+          name: snapshot-file
 
       # Step 5: Build Docker Image with Snapshot
       - name: Build Docker Image with Snapshot
         run: |
-          docker build --build-arg SNAPSHOT_PATH="./full-node-data--without-indexes-2024-12-14.tar" -t dohmoney/mainnet .
+          # Extract the snapshot file name
+          SNAPSHOT_FILE="./full-node-data--without-indexes-2024-12-14.tar"
+          
+          # Build Docker image with the snapshot
+          docker build --build-arg SNAPSHOT_PATH=$SNAPSHOT_FILE -t dohmoney/mainnet .
 
-      # Steps continue...
+      # Step 6: Push the newly tagged image to your Docker Hub repository
+      - name: Push Docker Image to Docker Hub
+        run: |
+          docker tag dohmoney/mainnet:latest dohmoney/mainnet:${{ steps.fetch_version.outputs.version }}
+          docker tag dohmoney/mainnet:latest dohmoney/mainnet:$(date +%Y%m%d%H%M)
+          docker push dohmoney/mainnet:latest
+          docker push dohmoney/mainnet:${{ steps.fetch_version.outputs.version }}
+          docker push dohmoney/mainnet:$(date +%Y%m%d%H%M)
+
+      # Step 7: Clean up unused Docker images to save space
+      - name: Cleanup Docker Images
+        run: docker image prune -f
